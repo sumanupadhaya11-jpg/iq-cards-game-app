@@ -1,0 +1,31 @@
+{
+  "appId": "com.pointgaming.iqcards",
+  "appName": "IQ CARD'S GAME",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": null,
+      "keystorePassword": null,
+      "keystoreAlias": null,
+      "keystoreAliasPassword": null,
+      "signingType": "jarsigner"
+    }
+  },
+  "plugins": {
+    "AdMob": {
+      "publisherId": "ca-app-pub-2783798495093877",
+      "interstitialId": "ca-app-pub-2783798495093877/5850421576",
+      "bannerId": "ca-app-pub-2783798495093877/9110743800",
+      "rewardedId": "ca-app-pub-2783798495093877/5146734059",
+      "mobileAds": {
+        "requestConfiguration": {
+          "keywords": ["game", "puzzle", "memory"],
+          "contentUrl": "https://iq-card-game.base44.app"
+        }
+      }
+    }
+  }
+}
