@@ -27,9 +27,6 @@ jobs:
           distribution: 'zulu'
           java-version: '11'
 
-      - name: Setup Android SDK
-        uses: actions/setup-android@v3
-
       - name: Build Web Assets
         run: npm run build
 
@@ -42,6 +39,7 @@ jobs:
       - name: Build Android App Bundle (AAB)
         run: |
           cd android
+          chmod +x gradlew
           ./gradlew bundleRelease
 
       - name: Upload AAB Artifact
