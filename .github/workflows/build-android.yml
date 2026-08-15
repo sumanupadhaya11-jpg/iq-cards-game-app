@@ -39,18 +39,22 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Update API Level
+      - name: Update build.gradle API Level
         run: |
-          sed -i 's/compileSdk = 33/compileSdk = 35/g' android/app/build.gradle.kts
-          sed -i 's/targetSdk = 33/targetSdk = 35/g' android/app/build.gradle.kts
+          if [ -f "android/app/build.gradle" ]; then
+            sed -i 's/compileSdkVersion = 33/compileSdkVersion = 35/g' android/app/build.gradle
+            sed -i 's/targetSdkVersion = 33/targetSdkVersion = 35/g' android/app/build.gradle
+            sed -i 's/compileSdk = 33/compileSdk = 35/g' android/app/build.gradle
+            sed -i 's/targetSdk = 33/targetSdk = 35/g' android/app/build.gradle
+          fi
 
-      - name: Build Android App Bundle
+      - name: Build Android App Bundle (AAB)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease --stacktrace
+          ./gradlew bundleRelease
 
-      - name: Upload AAB
+      - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
