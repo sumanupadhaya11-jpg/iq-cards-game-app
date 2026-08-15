@@ -33,23 +33,25 @@ jobs:
       - name: Build Web Assets
         run: npm run build
 
+      - name: Add Android Platform
+        run: npx cap add android
+
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Update build.gradle
+      - name: Update API Level
         run: |
-          cd android/app
-          sed -i 's/targetSdkVersion = 33/targetSdkVersion = 35/g' build.gradle
-          sed -i 's/compileSdkVersion = 33/compileSdkVersion = 35/g' build.gradle
+          sed -i 's/compileSdk = 33/compileSdk = 35/g' android/app/build.gradle.kts
+          sed -i 's/targetSdk = 33/targetSdk = 35/g' android/app/build.gradle.kts
 
-      - name: Build Android App Bundle (AAB)
+      - name: Build Android App Bundle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease --stacktrace
 
-      - name: Upload AAB Artifact
+      - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
-          path: android/app/build/outputs/bundle/release/*.aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
