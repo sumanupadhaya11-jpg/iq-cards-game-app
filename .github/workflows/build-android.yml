@@ -2,7 +2,7 @@ name: Build Android AAB
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -17,6 +17,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: npm
 
       - name: Install Dependencies
         run: npm install
@@ -24,7 +25,7 @@ jobs:
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: zulu
           java-version: '17'
 
       - name: Setup Android SDK
@@ -32,76 +33,101 @@ jobs:
 
       - name: Install Android SDK 35
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          yes | sdkmanager --licenses || true
+          sdkmanager --update
+          sdkmanager "platform-tools"
+          sdkmanager "platforms;android-35"
+          sdkmanager "build-tools;35.0.0"
+
+      - name: Verify Android SDK 35
+        run: |
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          echo "Android 35 platform installed successfully."
+          ls -lh "$ANDROID_HOME/platforms/android-35/android.jar"
 
       - name: Build Web Assets
         run: npm run build
 
       - name: Add Android Platform
-        run: npx cap add android || true
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
 
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Force Android API 35
+      - name: Force API 35
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          files = [
-              Path("android/variables.gradle"),
-              Path("android/app/build.gradle"),
-              Path("android/build.gradle")
-          ]
+          # Update Capacitor's variables.gradle
+          variables = Path("android/variables.gradle")
 
-          for path in files:
-              if not path.exists():
-                  continue
-
-              text = path.read_text()
+          if variables.exists():
+              text = variables.read_text()
 
               text = re.sub(
-                  r'compileSdkVersion\s*[=:]?\s*\d+',
+                  r'compileSdkVersion\s*=\s*\d+',
                   'compileSdkVersion = 35',
                   text
               )
 
               text = re.sub(
-                  r'compileSdk\s*[=:]?\s*\d+',
-                  'compileSdk = 35',
-                  text
-              )
-
-              text = re.sub(
-                  r'targetSdkVersion\s*[=:]?\s*\d+',
+                  r'targetSdkVersion\s*=\s*\d+',
                   'targetSdkVersion = 35',
                   text
               )
 
-              text = re.sub(
-                  r'targetSdk\s*[=:]?\s*\d+',
-                  'targetSdk = 35',
-                  text
-              )
+              if 'compileSdkVersion' not in text:
+                  text = text.replace(
+                      'ext {',
+                      'ext {\n    compileSdkVersion = 35',
+                      1
+                  )
 
-              path.write_text(text)
+              if 'targetSdkVersion' not in text:
+                  text = text.replace(
+                      'ext {',
+                      'ext {\n    targetSdkVersion = 35',
+                      1
+                  )
 
-          # Make sure app module explicitly targets API 35
+              variables.write_text(text)
+
+          # Update app/build.gradle if these values are explicitly present
           app = Path("android/app/build.gradle")
 
           if app.exists():
               text = app.read_text()
 
-              if "targetSdkVersion" not in text and "targetSdk" not in text:
-                  text = text.replace(
-                      "defaultConfig {",
-                      "defaultConfig {\n        targetSdkVersion 35",
-                      1
-                  )
+              text = re.sub(
+                  r'compileSdkVersion\s+\d+',
+                  'compileSdkVersion 35',
+                  text
+              )
+
+              text = re.sub(
+                  r'targetSdkVersion\s+\d+',
+                  'targetSdkVersion 35',
+                  text
+              )
 
               app.write_text(text)
+
+          print("API 35 configuration applied.")
           PY
+
+      - name: Verify Gradle Configuration
+        run: |
+          echo "===== variables.gradle ====="
+          cat android/variables.gradle || true
+
+          echo "===== app/build.gradle SDK settings ====="
+          grep -nE "compileSdk|targetSdk|versionCode|versionName" \
+            android/app/build.gradle || true
 
       - name: Set Version Code
         run: |
@@ -122,19 +148,26 @@ jobs:
               )
 
               path.write_text(text)
+
+          print("Version code set to 3.")
           PY
 
-      - name: Verify Android Configuration
-        run: |
-          echo "===== Android SDK configuration ====="
-          grep -RniE "compileSdk|targetSdk|versionCode|versionName" android --include="*.gradle" || true
-
-      - name: Build Android App Bundle (AAB)
+      - name: Clean Android Build
         run: |
           cd android
           chmod +x gradlew
           ./gradlew clean
-          ./gradlew bundleRelease
+
+      - name: Build Android App Bundle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease --no-daemon
+
+      - name: Verify AAB
+        run: |
+          test -f android/app/build/outputs/bundle/release/app-release.aab
+          ls -lh android/app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
