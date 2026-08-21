@@ -30,31 +30,37 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android SDK
+      - name: Setup Android SDK & API 36
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platforms;android-36 build-tools;36.0.0'
+          packages: 'platforms;android-36 build-tools;36.0.0 platform-tools'
 
       - name: Add Android Platform
         run: |
           npx cap add android || true
           npx cap sync android
 
-      - name: Update build.gradle API Level
+      - name: Force API Level 36 Across Gradle Properties
         run: |
-          sed -i 's/targetSdkVersion .*/targetSdkVersion 36/' android/app/build.gradle || true
+          # Force update variables.gradle if present
+          if [ -f "android/variables.gradle" ]; then
+            sed -i 's/compileSdkVersion = .*/compileSdkVersion = 36/' android/variables.gradle || true
+            sed -i 's/targetSdkVersion = .*/targetSdkVersion = 36/' android/variables.gradle || true
+          fi
+          
+          # Force update build.gradle
           sed -i 's/compileSdkVersion .*/compileSdkVersion 36/' android/app/build.gradle || true
+          sed -i 's/targetSdkVersion .*/targetSdkVersion 36/' android/app/build.gradle || true
           sed -i 's/compileSdk .*/compileSdk 36/' android/app/build.gradle || true
 
       - name: Build Android App Bundle (AAB)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease -Dorg.gradle.project.android.aapt2FromMaven=true
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
-          
