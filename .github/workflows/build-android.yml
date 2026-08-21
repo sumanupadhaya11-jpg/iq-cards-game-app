@@ -2,7 +2,7 @@ name: Build Android AAB
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -16,13 +16,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18
 
       - name: Install Dependencies
         run: npm install
-
-      - name: Build Web Assets
-        run: npm run build || true
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
@@ -31,31 +28,25 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v2
+
+      - name: Build Web Assets
+        run: npm run build
 
       - name: Add Android Platform
-        run: |
-          npx cap add android || true
-          npx cap sync android
+        run: npx cap add android || true
 
-      - name: Force Fix API Levels
-        run: |
-          # Set targetSdkVersion to 36
-          sed -i 's/targetSdkVersion .*/targetSdkVersion 36/' android/app/build.gradle || true
-          
-          # Fix compileSdk to 34 so AAPT2 resource linking passes without missing android-36.jar error
-          sed -i 's/compileSdkVersion .*/compileSdkVersion 34/' android/app/build.gradle || true
-          sed -i 's/compileSdk .*/compileSdk 34/' android/app/build.gradle || true
+      - name: Sync Capacitor
+        run: npx cap sync android || true
 
       - name: Build Android App Bundle (AAB)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease --no-daemon
+          ./gradlew bundleRelease
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
-          path: android/app/build/outputs/bundle/release/*.aab
-          
+          path: android/app/build/outputs/bundle/release/app-release.aab
