@@ -1,35 +1,36 @@
 name: Build Android AAB
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
       - master
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 18
 
-      - name: Install npm dependencies
+      - name: Install Dependencies
         run: npm install --no-audit --no-fund
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: '17'
+          java-version: 17
 
-      - name: Setup Android SDK
+      - name: Setup Android
         uses: android-actions/setup-android@v3
 
       - name: Install Android API 35
@@ -39,28 +40,26 @@ jobs:
           sdkmanager "platforms;android-35"
           sdkmanager "build-tools;35.0.0"
 
-      - name: Verify API 35
+      - name: Verify Android API 35
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
           test -f "$ANDROID_HOME/platforms/android-35/android.jar"
-          echo "Android API 35 OK"
-          ls -lh "$ANDROID_HOME/platforms/android-35/android.jar"
+          echo "ANDROID API 35 READY"
 
       - name: Build Web
         run: npm run build
 
-      - name: Prepare Capacitor Android
+      - name: Setup Capacitor Android
         run: |
-          if [ ! -d android ]; then
+          if [ ! -d "android" ]; then
             npx cap add android
           fi
 
-      - name: Capacitor Sync
+      - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Configure API 35
+      - name: Set API 35
         run: |
-          python3 <<'PY'
+          python3 - <<'PY'
           from pathlib import Path
           import re
 
@@ -70,25 +69,21 @@ jobs:
               Path("android/app/build.gradle.kts")
           ]
 
-          for path in files:
-              if not path.exists():
+          for file in files:
+              if not file.exists():
                   continue
 
-              text = path.read_text()
+              text = file.read_text()
 
               text = re.sub(
                   r'compileSdkVersion\s*[=:]?\s*\d+',
-                  lambda m: 'compileSdkVersion 35'
-                  if 'build.gradle.kts' not in str(path)
-                  else 'compileSdk = 35',
+                  'compileSdkVersion 35',
                   text
               )
 
               text = re.sub(
                   r'targetSdkVersion\s*[=:]?\s*\d+',
-                  lambda m: 'targetSdkVersion 35'
-                  if 'build.gradle.kts' not in str(path)
-                  else 'targetSdk = 35',
+                  'targetSdkVersion 35',
                   text
               )
 
@@ -104,66 +99,49 @@ jobs:
                   text
               )
 
-              path.write_text(text)
+              file.write_text(text)
 
-              print("Updated:", path)
+              print("Updated:", file)
           PY
 
-      - name: Show Android configuration
+      - name: Set Version Code
         run: |
-          echo "===== Android SDK settings ====="
-          grep -RniE "compileSdk|targetSdk" android \
-            --include="*.gradle" \
-            --include="*.gradle.kts" || true
-
-      - name: Set Version Code 3
-        run: |
-          python3 <<'PY'
+          python3 - <<'PY'
           from pathlib import Path
           import re
 
-          path = Path("android/app/build.gradle")
+          file = Path("android/app/build.gradle")
 
-          if path.exists():
-              text = path.read_text()
-
+          if file.exists():
+              text = file.read_text()
               text = re.sub(
                   r'versionCode\s+\d+',
                   'versionCode 3',
                   text,
                   count=1
               )
+              file.write_text(text)
 
-              path.write_text(text)
-              print("Version Code = 3")
+          file = Path("android/app/build.gradle.kts")
 
-          path = Path("android/app/build.gradle.kts")
-
-          if path.exists():
-              text = path.read_text()
-
+          if file.exists():
+              text = file.read_text()
               text = re.sub(
                   r'versionCode\s*=\s*\d+',
                   'versionCode = 3',
                   text,
                   count=1
               )
+              file.write_text(text)
 
-              path.write_text(text)
-              print("Version Code = 3")
+          print("Version Code = 3")
           PY
 
-      - name: Check Gradle
+      - name: Show SDK Configuration
         run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew --version
-
-      - name: Clean Gradle
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew clean --no-daemon --stacktrace
+          grep -RniE "compileSdk|targetSdk" android \
+            --include="*.gradle" \
+            --include="*.gradle.kts" || true
 
       - name: Build Release AAB
         run: |
@@ -172,22 +150,18 @@ jobs:
           ./gradlew bundleRelease \
             --no-daemon \
             --stacktrace \
-            --info
+            --refresh-dependencies
 
       - name: Verify AAB
         run: |
-          if [ ! -f android/app/build/outputs/bundle/release/app-release.aab ]; then
-            echo "AAB was not generated."
-            exit 1
-          fi
-
-          echo "================================"
-          echo "AAB BUILD SUCCESSFUL"
-          echo "================================"
+          test -f android/app/build/outputs/bundle/release/app-release.aab
+          echo "======================================"
+          echo "SUCCESS: AAB CREATED"
+          echo "======================================"
           ls -lh android/app/build/outputs/bundle/release/app-release.aab
 
-      - name: Upload AAB Artifact
+      - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: iq-cards-game-release-aab
+          name: IQ-CARDS-GAME-API35-AAB
           path: android/app/build/outputs/bundle/release/app-release.aab
