@@ -28,7 +28,11 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build Web Assets
         run: npm run build
@@ -37,45 +41,99 @@ jobs:
         run: npx cap add android || true
 
       - name: Sync Capacitor
-        run: npx cap sync android || true
+        run: npx cap sync android
 
-      - name: Create Updated build.gradle
+      - name: Force Android API 35
         run: |
-          cat > android/app/build.gradle << 'EOF'
-plugins {
-    id 'com.android.application'
-}
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
 
-android {
-    namespace "com.pointgaming.iqcards"
-    compileSdk 35
-    
-    defaultConfig {
-        applicationId "com.pointgaming.iqcards"
-        minSdkVersion 24
-        targetSdkVersion 35
-        versionCode 2
-        versionName "1.0.1"
-    }
+          files = [
+              Path("android/variables.gradle"),
+              Path("android/app/build.gradle"),
+              Path("android/build.gradle")
+          ]
 
-    buildTypes {
-        release {
-            minifyEnabled false
-        }
-    }
-}
+          for path in files:
+              if not path.exists():
+                  continue
 
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'com.google.android.material:material:1.9.0'
-}
-EOF
+              text = path.read_text()
+
+              text = re.sub(
+                  r'compileSdkVersion\s*[=:]?\s*\d+',
+                  'compileSdkVersion = 35',
+                  text
+              )
+
+              text = re.sub(
+                  r'compileSdk\s*[=:]?\s*\d+',
+                  'compileSdk = 35',
+                  text
+              )
+
+              text = re.sub(
+                  r'targetSdkVersion\s*[=:]?\s*\d+',
+                  'targetSdkVersion = 35',
+                  text
+              )
+
+              text = re.sub(
+                  r'targetSdk\s*[=:]?\s*\d+',
+                  'targetSdk = 35',
+                  text
+              )
+
+              path.write_text(text)
+
+          # Make sure app module explicitly targets API 35
+          app = Path("android/app/build.gradle")
+
+          if app.exists():
+              text = app.read_text()
+
+              if "targetSdkVersion" not in text and "targetSdk" not in text:
+                  text = text.replace(
+                      "defaultConfig {",
+                      "defaultConfig {\n        targetSdkVersion 35",
+                      1
+                  )
+
+              app.write_text(text)
+          PY
+
+      - name: Set Version Code
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("android/app/build.gradle")
+
+          if path.exists():
+              text = path.read_text()
+
+              text = re.sub(
+                  r'versionCode\s+\d+',
+                  'versionCode 3',
+                  text,
+                  count=1
+              )
+
+              path.write_text(text)
+          PY
+
+      - name: Verify Android Configuration
+        run: |
+          echo "===== Android SDK configuration ====="
+          grep -RniE "compileSdk|targetSdk|versionCode|versionName" android --include="*.gradle" || true
 
       - name: Build Android App Bundle (AAB)
         run: |
           cd android
           chmod +x gradlew
+          ./gradlew clean
           ./gradlew bundleRelease
 
       - name: Upload AAB Artifact
