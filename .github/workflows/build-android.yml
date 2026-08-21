@@ -2,7 +2,9 @@ name: Build Android AAB
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -16,16 +18,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: npm
+          node-version: '18'
 
       - name: Install Dependencies
         run: npm install
 
-      - name: Setup Java JDK
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: zulu
+          distribution: 'zulu'
           java-version: '17'
 
       - name: Setup Android SDK
@@ -34,21 +35,19 @@ jobs:
       - name: Install Android SDK 35
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager --update
           sdkmanager "platform-tools"
           sdkmanager "platforms;android-35"
           sdkmanager "build-tools;35.0.0"
 
-      - name: Verify Android SDK 35
+      - name: Verify Android 35
         run: |
           test -f "$ANDROID_HOME/platforms/android-35/android.jar"
-          echo "Android 35 platform installed successfully."
-          ls -lh "$ANDROID_HOME/platforms/android-35/android.jar"
+          echo "Android API 35 is installed correctly."
 
-      - name: Build Web Assets
+      - name: Build Web App
         run: npm run build
 
-      - name: Add Android Platform
+      - name: Add Capacitor Android
         run: |
           if [ ! -d "android" ]; then
             npx cap add android
@@ -63,7 +62,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # Update Capacitor's variables.gradle
           variables = Path("android/variables.gradle")
 
           if variables.exists():
@@ -97,7 +95,6 @@ jobs:
 
               variables.write_text(text)
 
-          # Update app/build.gradle if these values are explicitly present
           app = Path("android/app/build.gradle")
 
           if app.exists():
@@ -115,19 +112,29 @@ jobs:
                   text
               )
 
+              text = re.sub(
+                  r'compileSdk\s*=\s*\d+',
+                  'compileSdk = 35',
+                  text
+              )
+
+              text = re.sub(
+                  r'targetSdk\s*=\s*\d+',
+                  'targetSdk = 35',
+                  text
+              )
+
               app.write_text(text)
 
           print("API 35 configuration applied.")
           PY
 
-      - name: Verify Gradle Configuration
+      - name: Verify SDK Configuration
         run: |
-          echo "===== variables.gradle ====="
-          cat android/variables.gradle || true
-
-          echo "===== app/build.gradle SDK settings ====="
-          grep -nE "compileSdk|targetSdk|versionCode|versionName" \
-            android/app/build.gradle || true
+          echo "===== SDK CONFIGURATION ====="
+          grep -RniE "compileSdk|targetSdk" android \
+            --include="*.gradle" \
+            --include="*.gradle.kts" || true
 
       - name: Set Version Code
         run: |
@@ -135,41 +142,53 @@ jobs:
           from pathlib import Path
           import re
 
-          path = Path("android/app/build.gradle")
+          files = [
+              Path("android/app/build.gradle"),
+              Path("android/app/build.gradle.kts")
+          ]
 
-          if path.exists():
-              text = path.read_text()
+          for path in files:
+              if path.exists():
+                  text = path.read_text()
 
-              text = re.sub(
-                  r'versionCode\s+\d+',
-                  'versionCode 3',
-                  text,
-                  count=1
-              )
+                  text = re.sub(
+                      r'versionCode\s+\d+',
+                      'versionCode 3',
+                      text,
+                      count=1
+                  )
 
-              path.write_text(text)
+                  text = re.sub(
+                      r'versionCode\s*=\s*\d+',
+                      'versionCode = 3',
+                      text,
+                      count=1
+                  )
 
-          print("Version code set to 3.")
+                  path.write_text(text)
+                  print("Version code set to 3 in", path)
+
           PY
 
-      - name: Clean Android Build
+      - name: Clean Android Project
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew clean
+          ./gradlew clean --no-daemon
 
-      - name: Build Android App Bundle
+      - name: Build Release AAB
         run: |
           cd android
           chmod +x gradlew
           ./gradlew bundleRelease --no-daemon
 
-      - name: Verify AAB
+      - name: Check AAB
         run: |
           test -f android/app/build/outputs/bundle/release/app-release.aab
+          echo "AAB BUILD SUCCESSFUL"
           ls -lh android/app/build/outputs/bundle/release/app-release.aab
 
-      - name: Upload AAB Artifact
+      - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
