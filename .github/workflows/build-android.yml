@@ -39,13 +39,14 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android || true
 
-      - name: Update API Level to 35
+      - name: Update API Level and Version Code
         run: |
           if [ -f "android/app/build.gradle" ]; then
             sed -i 's/compileSdkVersion = 33/compileSdkVersion = 35/g' android/app/build.gradle
             sed -i 's/targetSdkVersion = 33/targetSdkVersion = 35/g' android/app/build.gradle
-            sed -i 's/compileSdk = 33/compileSdk = 35/g' android/app/build.gradle
-            sed -i 's/targetSdk = 33/targetSdk = 35/g' android/app/build.gradle
+            sed -i 's/versionCode = 1/versionCode = 2/g' android/app/build.gradle
+            sed -i 's/versionCode 1/versionCode 2/g' android/app/build.gradle
+            sed -i 's/versionName "1.0.0"/versionName "1.0.1"/g' android/app/build.gradle
           fi
 
       - name: Build Android App Bundle (AAB)
