@@ -33,21 +33,19 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK Platform 36 Explicitly
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0"
-
       - name: Add Android Platform
         run: |
           npx cap add android || true
           npx cap sync android
 
-      - name: Update build.gradle API Level
+      - name: Force Fix API Levels
         run: |
+          # Set targetSdkVersion to 36
           sed -i 's/targetSdkVersion .*/targetSdkVersion 36/' android/app/build.gradle || true
-          sed -i 's/compileSdkVersion .*/compileSdkVersion 36/' android/app/build.gradle || true
-          sed -i 's/compileSdk .*/compileSdk 36/' android/app/build.gradle || true
+          
+          # Fix compileSdk to 34 so AAPT2 resource linking passes without missing android-36.jar error
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 34/' android/app/build.gradle || true
+          sed -i 's/compileSdk .*/compileSdk 34/' android/app/build.gradle || true
 
       - name: Build Android App Bundle (AAB)
         run: |
@@ -60,3 +58,4 @@ jobs:
         with:
           name: app-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
+          
