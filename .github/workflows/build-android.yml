@@ -1,4 +1,4 @@
-name: Build Android AAB
+name: Build Android AAB API 35
 
 on:
   workflow_dispatch:
@@ -13,42 +13,49 @@ jobs:
 
     steps:
 
-      - name: Checkout
+      - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: "18"
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm install --no-audit --no-fund
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: zulu
-          java-version: 17
+          distribution: "zulu"
+          java-version: "17"
 
-      - name: Setup Android
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android API 35
+      - name: Install Android SDK 35
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools"
-          sdkmanager "platforms;android-35"
-          sdkmanager "build-tools;35.0.0"
 
-      - name: Verify Android API 35
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Verify Android SDK 35
         run: |
-          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
-          echo "ANDROID API 35 READY"
+          echo "ANDROID_HOME=$ANDROID_HOME"
 
-      - name: Build Web
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+
+          echo "Android API 35 installed successfully."
+
+          ls -lh "$ANDROID_HOME/platforms/android-35/android.jar"
+
+      - name: Build web application
         run: npm run build
 
-      - name: Setup Capacitor Android
+      - name: Prepare Capacitor Android
         run: |
           if [ ! -d "android" ]; then
             npx cap add android
@@ -57,9 +64,10 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Set API 35
+      - name: Configure Android API 35
+        shell: bash
         run: |
-          python3 - <<'PY'
+          python3 <<'PY'
           from pathlib import Path
           import re
 
@@ -70,26 +78,29 @@ jobs:
           ]
 
           for file in files:
+
               if not file.exists():
                   continue
 
               text = file.read_text()
 
+              # Compile SDK
               text = re.sub(
-                  r'compileSdkVersion\s*[=:]?\s*\d+',
-                  'compileSdkVersion 35',
-                  text
-              )
-
-              text = re.sub(
-                  r'targetSdkVersion\s*[=:]?\s*\d+',
-                  'targetSdkVersion 35',
+                  r'compileSdkVersion\s*=?\s*\d+',
+                  'compileSdkVersion = 35',
                   text
               )
 
               text = re.sub(
                   r'compileSdk\s*=\s*\d+',
                   'compileSdk = 35',
+                  text
+              )
+
+              # Target SDK
+              text = re.sub(
+                  r'targetSdkVersion\s*=?\s*\d+',
+                  'targetSdkVersion = 35',
                   text
               )
 
@@ -102,66 +113,95 @@ jobs:
               file.write_text(text)
 
               print("Updated:", file)
+
           PY
 
-      - name: Set Version Code
+      - name: Show Android SDK configuration
         run: |
-          python3 - <<'PY'
+          echo "===== COMPILE/TARGET SDK ====="
+
+          grep -RniE \
+            "compileSdk|targetSdk" \
+            android \
+            --include="*.gradle" \
+            --include="*.gradle.kts" \
+            || true
+
+      - name: Set version code
+        run: |
+          python3 <<'PY'
           from pathlib import Path
           import re
 
-          file = Path("android/app/build.gradle")
+          gradle = Path("android/app/build.gradle")
 
-          if file.exists():
-              text = file.read_text()
+          if gradle.exists():
+              text = gradle.read_text()
+
               text = re.sub(
                   r'versionCode\s+\d+',
                   'versionCode 3',
                   text,
                   count=1
               )
-              file.write_text(text)
 
-          file = Path("android/app/build.gradle.kts")
+              gradle.write_text(text)
+              print("Version Code set to 3")
 
-          if file.exists():
-              text = file.read_text()
+          kts = Path("android/app/build.gradle.kts")
+
+          if kts.exists():
+              text = kts.read_text()
+
               text = re.sub(
                   r'versionCode\s*=\s*\d+',
                   'versionCode = 3',
                   text,
                   count=1
               )
-              file.write_text(text)
 
-          print("Version Code = 3")
+              kts.write_text(text)
+              print("Version Code set to 3")
+
           PY
 
-      - name: Show SDK Configuration
+      - name: Check Gradle wrapper
         run: |
-          grep -RniE "compileSdk|targetSdk" android \
-            --include="*.gradle" \
-            --include="*.gradle.kts" || true
+          test -f android/gradlew
+          chmod +x android/gradlew
+
+          cd android
+
+          ./gradlew --version
 
       - name: Build Release AAB
         run: |
           cd android
+
           chmod +x gradlew
+
           ./gradlew bundleRelease \
             --no-daemon \
             --stacktrace \
-            --refresh-dependencies
+            --no-build-cache
 
       - name: Verify AAB
         run: |
-          test -f android/app/build/outputs/bundle/release/app-release.aab
-          echo "======================================"
-          echo "SUCCESS: AAB CREATED"
-          echo "======================================"
-          ls -lh android/app/build/outputs/bundle/release/app-release.aab
+          AAB="android/app/build/outputs/bundle/release/app-release.aab"
 
-      - name: Upload AAB
+          if [ ! -f "$AAB" ]; then
+            echo "ERROR: Release AAB was not created."
+            exit 1
+          fi
+
+          echo "=========================================="
+          echo "SUCCESS: API 35 AAB CREATED"
+          echo "=========================================="
+
+          ls -lh "$AAB"
+
+      - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: IQ-CARDS-GAME-API35-AAB
+          name: IQ-CARDS-GAME-API-35-AAB
           path: android/app/build/outputs/bundle/release/app-release.aab
