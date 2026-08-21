@@ -1,28 +1,55 @@
-plugins {
-    id 'com.android.application'
-}
+name: Build Android AAB
 
-android {
-    namespace "com.pointgaming.iqcards"
-    compileSdk 36
-    
-    defaultConfig {
-        applicationId "com.pointgaming.iqcards"
-        minSdkVersion 24
-        targetSdkVersion 36
-        versionCode 1
-        versionName "1.0.0"
-    }
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
 
-    buildTypes {
-        release {
-            minifyEnabled false
-        }
-    }
-}
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'com.google.android.material:material:1.9.0'
-}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Add Android Platform
+        run: |
+          npx cap add android || true
+          npx cap sync android
+
+      - name: Update build.gradle API Level
+        run: |
+          sed -i 's/targetSdkVersion .*/targetSdkVersion 36/' android/app/build.gradle || true
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 36/' android/app/build.gradle || true
+          sed -i 's/compileSdk .*/compileSdk 36/' android/app/build.gradle || true
+
+      - name: Build Android App Bundle (AAB)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease
+
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          
