@@ -43,13 +43,13 @@ jobs:
           npx cap add android || true
           npx cap sync android
 
-      - name: Set Version Code to 2 and API to 35
+      - name: Set Version Code to 3 and API to 35
         run: |
           sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' android/app/build.gradle || true
           sed -i 's/targetSdkVersion .*/targetSdkVersion 35/' android/app/build.gradle || true
           sed -i 's/compileSdk .*/compileSdk 35/' android/app/build.gradle || true
-          sed -i 's/versionCode .*/versionCode 2/' android/app/build.gradle || true
-          sed -i 's/versionName .*/versionName "1.0.1"/' android/app/build.gradle || true
+          sed -i 's/versionCode .*/versionCode 3/' android/app/build.gradle || true
+          sed -i 's/versionName .*/versionName "1.0.2"/' android/app/build.gradle || true
 
       - name: Fix AAPT2 and Build Release AAB
         run: |
