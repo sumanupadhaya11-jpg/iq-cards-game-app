@@ -1,4 +1,4 @@
-name: Build Android AAB
+name: Build AAB
 
 on:
   push:
@@ -8,65 +8,25 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
-
       - run: npm install
-
       - uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: 17
-
       - uses: android-actions/setup-android@v2
-
       - run: npm run build
-
-      - run: npx cap add android 2>/dev/null || true
-
-      - run: npx cap sync android 2>/dev/null || true
-
-      - name: Fix build.gradle
-        run: |
-          cat > android/app/build.gradle << 'EOF'
-plugins {
-    id 'com.android.application'
-}
-
-android {
-    compileSdk 35
-    namespace "com.pointgaming.iqcards"
-
-    defaultConfig {
-        applicationId "com.pointgaming.iqcards"
-        minSdk 24
-        targetSdk 35
-        versionCode 2
-        versionName "1.0.1"
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-        }
-    }
-}
-
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'com.google.android.material:material:1.9.0'
-}
-EOF
-
+      - run: npx cap add android || true
+      - run: npx cap sync android || true
+      - run: |
+          echo "plugins { id 'com.android.application' }" > android/app/build.gradle
+          echo "android { compileSdk 35; namespace 'com.pointgaming.iqcards'; defaultConfig { applicationId 'com.pointgaming.iqcards'; minSdk 24; targetSdk 35; versionCode 2; versionName '1.0.1' }; buildTypes { release { minifyEnabled false } } }" >> android/app/build.gradle
+          echo "dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }" >> android/app/build.gradle
       - run: cd android && chmod +x gradlew && ./gradlew bundleRelease
-
       - uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
