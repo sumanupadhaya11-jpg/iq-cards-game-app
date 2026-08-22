@@ -33,7 +33,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK Platform 35
+      - name: Install Android SDK Platform and Build Tools 35
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
@@ -43,26 +43,22 @@ jobs:
           npx cap add android || true
           npx cap sync android
 
-      - name: Set Version and API 35
+      - name: Configure Android API 35 and Increment Version
         run: |
-          # Update API to 35
           sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' android/app/build.gradle || true
           sed -i 's/targetSdkVersion .*/targetSdkVersion 35/' android/app/build.gradle || true
           sed -i 's/compileSdk .*/compileSdk 35/' android/app/build.gradle || true
-
-          # Update Version Code to 2 and Version Name to 1.0.1
           sed -i 's/versionCode .*/versionCode 2/' android/app/build.gradle || true
           sed -i 's/versionName .*/versionName "1.0.1"/' android/app/build.gradle || true
 
-      - name: Build Release AAB
+      - name: Clean and Build Release AAB
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease --no-daemon
+          ./gradlew clean bundleRelease --no-daemon
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
-          
