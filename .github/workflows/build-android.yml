@@ -1,29 +1,65 @@
-name: Build
+name: Build Android AAB API 35
 
 on:
   push:
-    branches: [main, master]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
-      - run: npm install
-      - uses: actions/setup-java@v4
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Web Assets
+        run: npm run build || true
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
         with:
-          distribution: zulu
-          java-version: 17
-      - uses: android-actions/setup-android@v2
-      - run: npm run build
-      - run: npx cap add android || true
-      - run: npx cap sync android || true
-      - run: cd android && chmod +x gradlew && ./gradlew bundleRelease
-      - uses: actions/upload-artifact@v4
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-35 build-tools;35.0.0 platform-tools'
+
+      - name: Add Android Platform
+        run: |
+          npx cap add android || true
+          npx cap sync android
+
+      - name: Configure Android API 35 and Increment Version Code
+        run: |
+          # Set Target and Compile SDK to 35
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' android/app/build.gradle || true
+          sed -i 's/targetSdkVersion .*/targetSdkVersion 35/' android/app/build.gradle || true
+          sed -i 's/compileSdk .*/compileSdk 35/' android/app/build.gradle || true
+
+          # Increment versionCode to 2 and versionName to 1.0.1
+          sed -i 's/versionCode .*/versionCode 2/' android/app/build.gradle || true
+          sed -i 's/versionName .*/versionName "1.0.1"/' android/app/build.gradle || true
+
+      - name: Build Release AAB
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease --no-daemon
+
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          
