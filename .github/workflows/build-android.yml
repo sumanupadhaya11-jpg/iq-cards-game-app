@@ -23,9 +23,35 @@ jobs:
       - run: npx cap add android || true
       - run: npx cap sync android || true
       - run: |
-          echo "plugins { id 'com.android.application' }" > android/app/build.gradle
-          echo "android { compileSdk 35; namespace 'com.pointgaming.iqcards'; defaultConfig { applicationId 'com.pointgaming.iqcards'; minSdk 24; targetSdk 35; versionCode 2; versionName '1.0.1' }; buildTypes { release { minifyEnabled false } } }" >> android/app/build.gradle
-          echo "dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }" >> android/app/build.gradle
+          cat > android/app/build.gradle << 'EOF'
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    compileSdk 34
+    namespace "com.pointgaming.iqcards"
+
+    defaultConfig {
+        applicationId "com.pointgaming.iqcards"
+        minSdk 24
+        targetSdk 34
+        versionCode 2
+        versionName "1.0.1"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+}
+EOF
       - run: cd android && chmod +x gradlew && ./gradlew bundleRelease
       - uses: actions/upload-artifact@v4
         with:
