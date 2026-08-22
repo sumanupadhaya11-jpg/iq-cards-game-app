@@ -32,22 +32,25 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: 'platforms;android-35 build-tools;35.0.0 platform-tools'
+
+      - name: Install Android SDK Platform 35
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       - name: Add Android Platform
         run: |
           npx cap add android || true
           npx cap sync android
 
-      - name: Configure Android API 35 and Increment Version Code
+      - name: Set Version and API 35
         run: |
-          # Set Target and Compile SDK to 35
+          # Update API to 35
           sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' android/app/build.gradle || true
           sed -i 's/targetSdkVersion .*/targetSdkVersion 35/' android/app/build.gradle || true
           sed -i 's/compileSdk .*/compileSdk 35/' android/app/build.gradle || true
 
-          # Increment versionCode to 2 and versionName to 1.0.1
+          # Update Version Code to 2 and Version Name to 1.0.1
           sed -i 's/versionCode .*/versionCode 2/' android/app/build.gradle || true
           sed -i 's/versionName .*/versionName "1.0.1"/' android/app/build.gradle || true
 
