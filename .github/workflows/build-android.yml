@@ -2,8 +2,7 @@ name: Build Android AAB API 35
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -11,126 +10,111 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: "zulu"
+          distribution: "temurin"
           java-version: "17"
 
-      - name: Install Dependencies
+      - name: Install Node dependencies
         run: npm install
 
-      - name: Build Web App
+      - name: Build web app
         run: npm run build
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK 35
+      - name: Remove broken SDK 35 and reinstall
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          rm -rf "$ANDROID_HOME/platforms/android-35"
+          rm -rf "$ANDROID_HOME/build-tools/35.0.0"
 
-      - name: Add Capacitor Android
+          yes | sdkmanager --licenses || true
+
+          sdkmanager --update
+
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Verify Android 35
+        run: |
+          ls -lh "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -s "$ANDROID_HOME/platforms/android-35/android.jar"
+          echo "Android API 35 SDK is ready."
+
+      - name: Add Android platform
         run: npx cap add android
 
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Configure Android API 35 and AdMob
+      - name: Force API 35
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          app_id = "ca-app-pub-2783798495093877~9817320811"
+          files = [
+              Path("android/variables.gradle"),
+              Path("android/app/build.gradle")
+          ]
 
-          variables = Path("android/variables.gradle")
+          for file in files:
+              if not file.exists():
+                  continue
 
-          if variables.exists():
-              text = variables.read_text()
+              text = file.read_text()
 
               text = re.sub(
-                  r'compileSdkVersion\s*=\s*\d+',
+                  r'compileSdkVersion\s*=?\s*\d+',
                   'compileSdkVersion = 35',
                   text
               )
 
               text = re.sub(
-                  r'targetSdkVersion\s*=\s*\d+',
+                  r'targetSdkVersion\s*=?\s*\d+',
                   'targetSdkVersion = 35',
                   text
               )
 
-              variables.write_text(text)
-
-          strings = Path(
-              "android/app/src/main/res/values/strings.xml"
-          )
-
-          strings.parent.mkdir(parents=True, exist_ok=True)
-
-          if strings.exists():
-              text = strings.read_text()
-          else:
-              text = "<resources>\n</resources>\n"
-
-          if 'name="admob_app_id"' in text:
               text = re.sub(
-                  r'<string name="admob_app_id">.*?</string>',
-                  f'<string name="admob_app_id">{app_id}</string>',
+                  r'compileSdk\s+\d+',
+                  'compileSdk 35',
                   text
               )
-          else:
-              text = text.replace(
-                  "</resources>",
-                  f'    <string name="admob_app_id">{app_id}</string>\n</resources>'
+
+              text = re.sub(
+                  r'targetSdk\s+\d+',
+                  'targetSdk 35',
+                  text
               )
 
-          strings.write_text(text)
+              file.write_text(text)
 
-          manifest = Path(
-              "android/app/src/main/AndroidManifest.xml"
-          )
-
-          text = manifest.read_text()
-
-          metadata = (
-              '<meta-data '
-              'android:name="com.google.android.gms.ads.APPLICATION_ID" '
-              'android:value="@string/admob_app_id" />'
-          )
-
-          if "com.google.android.gms.ads.APPLICATION_ID" not in text:
-              text = text.replace(
-                  "</application>",
-                  f"        {metadata}\n    </application>"
-              )
-
-          manifest.write_text(text)
-
-          print("Android API 35 configured.")
-          print("AdMob App ID configured.")
+          print("compileSdk/targetSdk forced to 35")
           PY
 
-      - name: Set Version Code and Version Name
+      - name: Set version
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          gradle = Path("android/app/build.gradle")
+          file = Path("android/app/build.gradle")
 
-          if gradle.exists():
-              text = gradle.read_text()
+          if file.exists():
+              text = file.read_text()
 
               text = re.sub(
                   r'versionCode\s+\d+',
@@ -146,24 +130,21 @@ jobs:
                   count=1
               )
 
-              gradle.write_text(text)
+              file.write_text(text)
 
-          print("Version Code: 4")
-          print("Version Name: 1.0.3")
+          print("Version Code = 4")
+          print("Version Name = 1.0.3")
           PY
 
-      - name: Verify Android Configuration
-        run: |
-          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
-          test -f "android/app/src/main/AndroidManifest.xml"
-          echo "Android API 35 is installed."
-          echo "AndroidManifest.xml exists."
-
-      - name: Build Release AAB
+      - name: Clean Gradle
         run: |
           cd android
           chmod +x gradlew
           ./gradlew clean --no-daemon
+
+      - name: Build Release AAB
+        run: |
+          cd android
           ./gradlew bundleRelease --no-daemon --stacktrace
 
       - name: Verify AAB
