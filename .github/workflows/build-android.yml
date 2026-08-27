@@ -48,7 +48,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # Upgrade Android Gradle Plugin
           root = Path("android")
 
           build_gradle = root / "build.gradle"
@@ -62,7 +61,6 @@ jobs:
 
           build_gradle.write_text(text)
 
-          # Upgrade Gradle wrapper
           wrapper = root / "gradle/wrapper/gradle-wrapper.properties"
           text = wrapper.read_text()
 
@@ -74,7 +72,6 @@ jobs:
 
           wrapper.write_text(text)
 
-          # API 35
           variables = root / "variables.gradle"
 
           if variables.exists():
@@ -165,27 +162,26 @@ jobs:
           import re
 
           gradle = Path("android/app/build.gradle")
-
           text = gradle.read_text()
 
           text = re.sub(
               r'versionCode\s+\d+',
-              'versionCode 5',
+              'versionCode 6',
               text,
               count=1
           )
 
           text = re.sub(
               r'versionName\s+"[^"]+"',
-              'versionName "1.0.4"',
+              'versionName "1.0.5"',
               text,
               count=1
           )
 
           gradle.write_text(text)
 
-          print("Version Code: 5")
-          print("Version Name: 1.0.4")
+          print("Version Code: 6")
+          print("Version Name: 1.0.5")
           PY
 
       - name: Build Release AAB
@@ -202,5 +198,5 @@ jobs:
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: iq-cards-game-api35-aab
+          name: iq-cards-game-api35-aab-v6
           path: android/app/build/outputs/bundle/release/app-release.aab
