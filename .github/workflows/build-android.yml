@@ -166,22 +166,22 @@ jobs:
 
           text = re.sub(
               r'versionCode\s+\d+',
-              'versionCode 7',
+              'versionCode 8',
               text,
               count=1
           )
 
           text = re.sub(
               r'versionName\s+"[^"]+"',
-              'versionName "1.0.6"',
+              'versionName "1.0.7"',
               text,
               count=1
           )
 
           gradle.write_text(text)
 
-          print("Version Code: 7")
-          print("Version Name: 1.0.6")
+          print("Version Code: 8")
+          print("Version Name: 1.0.7")
           PY
 
       - name: Build Release AAB
@@ -198,5 +198,5 @@ jobs:
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: iq-cards-game-api35-aab-v7
+          name: iq-cards-game-api35-aab-v8
           path: android/app/build/outputs/bundle/release/app-release.aab
