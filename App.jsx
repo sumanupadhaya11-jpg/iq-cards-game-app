@@ -1,32 +1,44 @@
 import React, { useEffect } from "react";
+import {
+  AdMob
+} from "@capacitor-community/admob";
+
+const GAME_URL = "https://iq-card-game.base44.app";
 
 export default function IQCardGame() {
   useEffect(() => {
-    // Optional: Try to initialize AdMob if available
-    if (typeof window !== 'undefined' && window.AdMob) {
+    const start = async () => {
       try {
-        window.AdMob.initialize();
-      } catch (e) {
-        console.log("AdMob not available");
+        // Initialize AdMob safely
+        if (window.AdMob) {
+          await AdMob.initialize();
+          console.log("AdMob initialized");
+        }
+      } catch (error) {
+        console.log("AdMob init skipped - continuing");
       }
-    }
+
+      // Navigate to game (no iframe blocking)
+      window.location.replace(GAME_URL);
+    };
+
+    start();
   }, []);
 
   return (
-    <iframe
-      title="IQ Card Game"
-      src="https://iq-card-game.base44.app/"
+    <div
       style={{
         width: "100%",
         height: "100vh",
-        border: "none",
         margin: 0,
         padding: 0,
-        display: "block",
-        backgroundColor: "#ffffff"
+        background: "#ffffff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
       }}
-      allow="fullscreen; geolocation; camera; microphone"
-      sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation allow-top-navigation"
-    />
+    >
+      <p>Loading game...</p>
+    </div>
   );
 }
