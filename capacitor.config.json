@@ -3,6 +3,10 @@
   "appName": "IQ CARD'S GAME",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "url": "https://iq-card-game.base44.app",
+    "androidScheme": "https",
+    "allowNavigation": [
+      "iq-card-game.base44.app"
+    ]
   }
 }
