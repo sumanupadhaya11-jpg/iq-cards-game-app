@@ -2,52 +2,68 @@ import React, { useEffect } from "react";
 import {
   AdMob,
   BannerAdSize,
-  BannerAdPosition
+  BannerAdPosition,
+  RewardAdPluginEvents
 } from "@capacitor-community/admob";
 
 const GAME_URL = "https://iq-card-game.base44.app";
 
-const TEST_ADS = false; // ← CHANGE KIA: true se false
-
 const ADS = {
-  banner: TEST_ADS
-    ? "ca-app-pub-3940256099942544/9214589741"
-    : "ca-app-pub-2783798495093877/9110743800",
-
-  interstitial: TEST_ADS
-    ? "ca-app-pub-3940256099942544/1033173712"
-    : "ca-app-pub-2783798495093877/5850421576",
-
-  rewarded: TEST_ADS
-    ? "ca-app-pub-3940256099942544/5224354917"
-    : "ca-app-pub-2783798495093877/5146734059"
+  banner: "ca-app-pub-2783798495093877/9110743800",
+  interstitial: "ca-app-pub-2783798495093877/5850421576",
+  rewarded: "ca-app-pub-2783798495093877/5146734059"
 };
 
 export default function IQCardGame() {
   useEffect(() => {
     let active = true;
 
-    const start = async () => {
+    const initAds = async () => {
       try {
         await AdMob.initialize();
 
-        if (!active) return;
-
+        // Show banner ad
         await AdMob.showBanner({
           adId: ADS.banner,
           adSize: BannerAdSize.BANNER,
           position: BannerAdPosition.BOTTOM_CENTER,
           margin: 0,
-          isTesting: TEST_ADS
+          isTesting: false
         });
+
+        // Listen for game events
+        window.showRewardedAd = async () => {
+          try {
+            await AdMob.prepareRewardVideoAd({
+              adId: ADS.rewarded
+            });
+            await AdMob.showRewardVideoAd();
+          } catch (e) {
+            console.log("Rewarded ad error");
+          }
+        };
+
+        window.showInterstitialAd = async () => {
+          try {
+            await AdMob.prepareInterstitial({
+              adId: ADS.interstitial
+            });
+            await AdMob.showInterstitial();
+          } catch (e) {
+            console.log("Interstitial ad error");
+          }
+        };
+
       } catch (error) {
-        console.log("AdMob error:", error);
+        console.log("AdMob init error:", error);
       }
 
-      window.location.replace(GAME_URL);
+      if (active) {
+        window.location.replace(GAME_URL);
+      }
     };
 
-    start();
+    initAds();
 
     return () => {
       active = false;
@@ -56,14 +72,12 @@ export default function IQCardGame() {
   }, []);
 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100vh",
-        margin: 0,
-        padding: 0,
-        background: "#ffffff"
-      }}
-    />
+    <div style={{
+      width: "100%",
+      height: "100vh",
+      margin: 0,
+      padding: 0,
+      background: "#ffffff"
+    }} />
   );
 }
