@@ -2,11 +2,10 @@ import React, { useEffect } from "react";
 import {
   AdMob,
   BannerAdSize,
-  BannerAdPosition,
-  RewardAdPluginEvents
+  BannerAdPosition
 } from "@capacitor-community/admob";
 
-const GAME_URL = "https://iq-card-game.base44.app";
+const TEST_ADS = false;
 
 const ADS = {
   banner: "ca-app-pub-2783798495093877/9110743800",
@@ -16,68 +15,48 @@ const ADS = {
 
 export default function IQCardGame() {
   useEffect(() => {
-    let active = true;
+    let mounted = true;
 
-    const initAds = async () => {
+    async function setupAds() {
       try {
         await AdMob.initialize();
 
-        // Show banner ad
+        if (!mounted) return;
+
         await AdMob.showBanner({
           adId: ADS.banner,
           adSize: BannerAdSize.BANNER,
           position: BannerAdPosition.BOTTOM_CENTER,
           margin: 0,
-          isTesting: false
+          isTesting: TEST_ADS
         });
 
-        // Listen for game events
-        window.showRewardedAd = async () => {
-          try {
-            await AdMob.prepareRewardVideoAd({
-              adId: ADS.rewarded
-            });
-            await AdMob.showRewardVideoAd();
-          } catch (e) {
-            console.log("Rewarded ad error");
-          }
-        };
-
-        window.showInterstitialAd = async () => {
-          try {
-            await AdMob.prepareInterstitial({
-              adId: ADS.interstitial
-            });
-            await AdMob.showInterstitial();
-          } catch (e) {
-            console.log("Interstitial ad error");
-          }
-        };
-
+        console.log("AdMob banner requested");
       } catch (error) {
-        console.log("AdMob init error:", error);
+        console.error("AdMob setup failed:", error);
       }
+    }
 
-      if (active) {
-        window.location.replace(GAME_URL);
-      }
-    };
-
-    initAds();
+    setupAds();
 
     return () => {
-      active = false;
+      mounted = false;
       AdMob.removeBanner().catch(() => {});
     };
   }, []);
 
   return (
-    <div style={{
-      width: "100%",
-      height: "100vh",
-      margin: 0,
-      padding: 0,
-      background: "#ffffff"
-    }} />
+    <iframe
+      title="IQ CARD'S GAME"
+      src="https://iq-card-game.base44.app"
+      style={{
+        position: "fixed",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        border: "none"
+      }}
+      allow="fullscreen"
+    />
   );
 }
