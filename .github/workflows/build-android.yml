@@ -106,6 +106,9 @@ jobs:
           import re
 
           app_id = "ca-app-pub-2783798495093877~9817320811"
+          banner_id = "ca-app-pub-2783798495093877/9110743800"
+          rewarded_id = "ca-app-pub-2783798495093877/5146734059"
+          interstitial_id = "ca-app-pub-2783798495093877/5850421576"
 
           strings = Path(
               "android/app/src/main/res/values/strings.xml"
@@ -118,16 +121,23 @@ jobs:
           else:
               text = "<resources>\n</resources>\n"
 
+          admob_config = f'''    <string name="admob_app_id">{app_id}</string>
+    <string name="admob_banner_id">{banner_id}</string>
+    <string name="admob_rewarded_id">{rewarded_id}</string>
+    <string name="admob_interstitial_id">{interstitial_id}</string>
+'''
+
           if 'name="admob_app_id"' in text:
               text = re.sub(
-                  r'<string name="admob_app_id">.*?</string>',
-                  f'<string name="admob_app_id">{app_id}</string>',
-                  text
+                  r'\s*<string name="admob_app_id">.*?</string>.*?<string name="admob_interstitial_id">.*?</string>\s*',
+                  '\n' + admob_config,
+                  text,
+                  flags=re.DOTALL
               )
           else:
               text = text.replace(
                   "</resources>",
-                  f'    <string name="admob_app_id">{app_id}</string>\n</resources>'
+                  admob_config + "</resources>"
               )
 
           strings.write_text(text)
@@ -139,7 +149,7 @@ jobs:
           text = manifest.read_text()
 
           metadata = (
-              '<meta-data '
+              '        <meta-data '
               'android:name="com.google.android.gms.ads.APPLICATION_ID" '
               'android:value="@string/admob_app_id" />'
           )
@@ -147,12 +157,15 @@ jobs:
           if "com.google.android.gms.ads.APPLICATION_ID" not in text:
               text = text.replace(
                   "</application>",
-                  f"        {metadata}\n    </application>"
+                  metadata + "\n    </application>"
               )
 
           manifest.write_text(text)
 
           print("AdMob App ID configured")
+          print("AdMob Banner ID configured")
+          print("AdMob Rewarded ID configured")
+          print("AdMob Interstitial ID configured")
           PY
 
       - name: Set Version
@@ -173,7 +186,7 @@ jobs:
 
           text = re.sub(
               r'versionName\s+"[^"]+"',
-              'versionName "1.0.10"',
+              'versionName "1.1.1"',
               text,
               count=1
           )
@@ -181,7 +194,7 @@ jobs:
           gradle.write_text(text)
 
           print("Version Code: 12")
-          print("Version Name: 1.0.10")
+          print("Version Name: 1.1.1")
           PY
 
       - name: Build Release AAB
