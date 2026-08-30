@@ -8,5 +8,10 @@
     "allowNavigation": [
       "iq-card-game.base44.app"
     ]
+  },
+  "plugins": {
+    "AdMob": {
+      "appId": "ca-app-pub-2783798495093877~9817320811"
+    }
   }
 }
