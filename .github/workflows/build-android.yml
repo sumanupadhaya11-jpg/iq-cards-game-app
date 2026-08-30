@@ -1,4 +1,4 @@
-Name: Build Android AAB API 35
+name: Build Android AAB API 35
 
 on:
   push:
