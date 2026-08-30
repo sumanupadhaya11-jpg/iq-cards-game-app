@@ -99,68 +99,36 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Configure AdMob
+      - name: Configure AdMob Strings
+        run: |
+          mkdir -p android/app/src/main/res/values
+          cat > android/app/src/main/res/values/strings.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="app_name">IQ CARD\'S GAME</string>
+              <string name="admob_app_id">ca-app-pub-2783798495093877~9817320811</string>
+              <string name="admob_banner_id">ca-app-pub-2783798495093877/9110743800</string>
+              <string name="admob_rewarded_id">ca-app-pub-2783798495093877/5146734059</string>
+              <string name="admob_interstitial_id">ca-app-pub-2783798495093877/5850421576</string>
+          </resources>
+          EOF
+
+      - name: Configure AdMob Manifest
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
-          app_id = "ca-app-pub-2783798495093877~9817320811"
-          banner_id = "ca-app-pub-2783798495093877/9110743800"
-          rewarded_id = "ca-app-pub-2783798495093877/5146734059"
-          interstitial_id = "ca-app-pub-2783798495093877/5850421576"
-
-          strings = Path(
-              "android/app/src/main/res/values/strings.xml"
-          )
-
-          strings.parent.mkdir(parents=True, exist_ok=True)
-
-          admob_config = f'''    <string name="admob_app_id">{app_id}</string>
-    <string name="admob_banner_id">{banner_id}</string>
-    <string name="admob_rewarded_id">{rewarded_id}</string>
-    <string name="admob_interstitial_id">{interstitial_id}</string>
-'''
-
-          if strings.exists():
-              text = strings.read_text()
-              # Remove old AdMob strings if they exist
-              text = re.sub(r'    <string name="admob_.*?">.*?</string>\n', '', text)
-          else:
-              text = "<resources>\n</resources>\n"
-
-          # Add new AdMob config before closing tag
-          text = text.replace(
-              "</resources>",
-              admob_config + "</resources>"
-          )
-
-          strings.write_text(text)
-
-          manifest = Path(
-              "android/app/src/main/AndroidManifest.xml"
-          )
-
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
           text = manifest.read_text()
 
-          metadata = (
-              '        <meta-data '
-              'android:name="com.google.android.gms.ads.APPLICATION_ID" '
-              'android:value="@string/admob_app_id" />'
-          )
+          metadata = '        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="@string/admob_app_id" />'
 
           if "com.google.android.gms.ads.APPLICATION_ID" not in text:
-              text = text.replace(
-                  "</application>",
-                  metadata + "\n    </application>"
-              )
-
-          manifest.write_text(text)
-
-          print("AdMob App ID configured")
-          print("AdMob Banner ID configured")
-          print("AdMob Rewarded ID configured")
-          print("AdMob Interstitial ID configured")
+              text = text.replace("</application>", metadata + "\n    </application>")
+              manifest.write_text(text)
+              print("AdMob meta-data added to manifest")
+          else:
+              print("AdMob meta-data already present")
           PY
 
       - name: Set Version
