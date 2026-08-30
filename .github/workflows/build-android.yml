@@ -116,29 +116,24 @@ jobs:
 
           strings.parent.mkdir(parents=True, exist_ok=True)
 
-          if strings.exists():
-              text = strings.read_text()
-          else:
-              text = "<resources>\n</resources>\n"
-
           admob_config = f'''    <string name="admob_app_id">{app_id}</string>
     <string name="admob_banner_id">{banner_id}</string>
     <string name="admob_rewarded_id">{rewarded_id}</string>
     <string name="admob_interstitial_id">{interstitial_id}</string>
 '''
 
-          if 'name="admob_app_id"' in text:
-              text = re.sub(
-                  r'\s*<string name="admob_app_id">.*?</string>.*?<string name="admob_interstitial_id">.*?</string>\s*',
-                  '\n' + admob_config,
-                  text,
-                  flags=re.DOTALL
-              )
+          if strings.exists():
+              text = strings.read_text()
+              # Remove old AdMob strings if they exist
+              text = re.sub(r'    <string name="admob_.*?">.*?</string>\n', '', text)
           else:
-              text = text.replace(
-                  "</resources>",
-                  admob_config + "</resources>"
-              )
+              text = "<resources>\n</resources>\n"
+
+          # Add new AdMob config before closing tag
+          text = text.replace(
+              "</resources>",
+              admob_config + "</resources>"
+          )
 
           strings.write_text(text)
 
