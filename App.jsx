@@ -46,17 +46,26 @@ export default function IQCardGame() {
   }, []);
 
   return (
-    <iframe
-      title="IQ CARD'S GAME"
-      src="https://iq-card-game.base44.app"
+    <div
       style={{
         position: "fixed",
         inset: 0,
         width: "100%",
         height: "100%",
-        border: "none"
+        overflow: "hidden"
       }}
-      allow="fullscreen"
-    />
+    >
+      <iframe
+        title="IQ CARD'S GAME"
+        src="https://iq-card-game.base44.app"
+        style={{
+          width: "100%",
+          height: "calc(100% + 55px)",
+          border: "none"
+        }}
+        allow="fullscreen"
+      />
+    </div>
   );
 }
+
