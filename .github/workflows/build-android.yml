@@ -118,16 +118,22 @@ jobs:
           else:
               text = "<resources>\n</resources>\n"
 
+          admob_string = (
+              '    <string name="admob_app_id">'
+              + app_id +
+              '</string>\n'
+          )
+
           if 'name="admob_app_id"' in text:
               text = re.sub(
-                  r'<string name="admob_app_id">.*?</string>',
-                  f'<string name="admob_app_id">{app_id}</string>',
+                  r'\s*<string name="admob_app_id">.*?</string>\s*',
+                  '\n' + admob_string,
                   text
               )
           else:
               text = text.replace(
                   "</resources>",
-                  f'    <string name="admob_app_id">{app_id}</string>\n</resources>"
+                  admob_string + "</resources>"
               )
 
           strings.write_text(text)
@@ -139,7 +145,7 @@ jobs:
           text = manifest.read_text()
 
           metadata = (
-              '<meta-data '
+              '        <meta-data '
               'android:name="com.google.android.gms.ads.APPLICATION_ID" '
               'android:value="@string/admob_app_id" />'
           )
@@ -147,12 +153,12 @@ jobs:
           if "com.google.android.gms.ads.APPLICATION_ID" not in text:
               text = text.replace(
                   "</application>",
-                  f"        {metadata}\n    </application>"
+                  metadata + "\n    </application>"
               )
 
           manifest.write_text(text)
 
-          print("AdMob App ID configured")
+          print("AdMob App ID configured successfully")
           PY
 
       - name: Set Version
