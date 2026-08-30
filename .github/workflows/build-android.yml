@@ -101,17 +101,34 @@ jobs:
 
       - name: Configure AdMob Strings
         run: |
-          mkdir -p android/app/src/main/res/values
-          cat > android/app/src/main/res/values/strings.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <string name="app_name">IQ CARD\'S GAME</string>
-              <string name="admob_app_id">ca-app-pub-2783798495093877~9817320811</string>
+          python3 - <<'PY'
+          from pathlib import Path
+
+          strings_path = Path("android/app/src/main/res/values/strings.xml")
+          
+          if not strings_path.parent.exists():
+              strings_path.parent.mkdir(parents=True, exist_ok=True)
+
+          admob_tags = '''    <string name="admob_app_id">ca-app-pub-2783798495093877~9817320811</string>
               <string name="admob_banner_id">ca-app-pub-2783798495093877/9110743800</string>
               <string name="admob_rewarded_id">ca-app-pub-2783798495093877/5146734059</string>
               <string name="admob_interstitial_id">ca-app-pub-2783798495093877/5850421576</string>
-          </resources>
-          EOF
+          '''
+
+          if strings_path.exists():
+              content = strings_path.read_text()
+              if "</resources>" in content:
+                  content = content.replace("</resources>", f"{admob_tags}</resources>")
+                  strings_path.write_text(content)
+          else:
+              xml_content = f'''<?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="app_name">IQ CARD&#39;S GAME</string>
+          {admob_tags}</resources>'''
+              strings_path.write_text(xml_content)
+
+          print("AdMob strings injected successfully")
+          PY
 
       - name: Configure AdMob Manifest
         run: |
@@ -176,3 +193,4 @@ jobs:
         with:
           name: iq-cards-game-api35-aab-v12
           path: android/app/build/outputs/bundle/release/app-release.aab
+          
