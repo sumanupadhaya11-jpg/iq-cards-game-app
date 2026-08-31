@@ -99,6 +99,22 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Ensure API 35 in app build.gradle
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          gradle = Path("android/app/build.gradle")
+          text = gradle.read_text()
+
+          text = re.sub(r'compileSdk\s+\d+', 'compileSdk 35', text)
+          text = re.sub(r'targetSdk\s+\d+', 'targetSdk 35', text)
+
+          gradle.write_text(text)
+          print("API 35 confirmed in app/build.gradle")
+          PY
+
       - name: Configure AdMob Strings
         run: |
           python3 - <<'PY'
@@ -123,7 +139,7 @@ jobs:
           else:
               xml_content = f'''<?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <string name="app_name">IQ CARD&#39;S GAME</string>
+              <string name="app_name">IQ CARD\'S GAME</string>
           {admob_tags}</resources>'''
               strings_path.write_text(xml_content)
 
@@ -159,22 +175,22 @@ jobs:
 
           text = re.sub(
               r'versionCode\s+\d+',
-              'versionCode 13',
+              'versionCode 14',
               text,
               count=1
           )
 
           text = re.sub(
               r'versionName\s+"[^"]+"',
-              'versionName "1.1.2"',
+              'versionName "1.1.3"',
               text,
               count=1
           )
 
           gradle.write_text(text)
 
-          print("Version Code: 13")
-          print("Version Name: 1.1.2")
+          print("Version Code: 14")
+          print("Version Name: 1.1.3")
           PY
 
       - name: Build Release AAB
@@ -191,6 +207,5 @@ jobs:
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: iq-cards-game-api35-aab-v13
+          name: iq-cards-game-api35-aab-v14
           path: android/app/build/outputs/bundle/release/app-release.aab
-          
